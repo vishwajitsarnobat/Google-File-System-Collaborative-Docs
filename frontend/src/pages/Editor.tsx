@@ -68,7 +68,7 @@ export default function Editor() {
         if (user) fetchContent();
     }, [id, user]);
 
-    // Polling Interval
+    // Polling Interval (Simulates Real-time sync)
     useEffect(() => {
         const interval = setInterval(fetchContent, 3000); 
         return () => clearInterval(interval);
@@ -91,7 +91,12 @@ export default function Editor() {
             isEditingRef.current = false;
             fetchContent(); 
         } catch (e: any) {
-            if (e.response?.status === 503) {
+            // FIX: Explicitly handle 403 Permission Denied
+            if (e.response?.status === 403) {
+                toast.error("Permission Denied", {
+                    description: "You do not have write access to this file."
+                });
+            } else if (e.response?.status === 503) {
                 toast.error("Save Failed: No active Chunkservers.");
             } else {
                 toast.error("Save Failed: Cluster might be in election.");

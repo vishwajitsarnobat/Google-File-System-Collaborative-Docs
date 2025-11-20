@@ -327,24 +327,19 @@ class MasterNode:
             file_id = f"file_{int(time.time())}"
             chunk_handle = f"chunk_{file_id}_0"
             
-            # Warm-up: Check if we need to wait for heartbeats (startup race condition)
+            # Warm-up
             retries = 8 
             while not self.active_chunkservers and retries > 0:
                 time.sleep(0.5)
                 retries -= 1
 
-            # Load Balancing: Pick active nodes
             now = time.time()
             live_nodes = [p for p, t in self.active_chunkservers.items() if now - t < 10]
             
             if not live_nodes: 
-                print("[GFS] Create failed: No live chunkservers.")
                 return jsonify({"error": "No Chunkservers Available"}), 503
 
-            # Select 3 replicas (or fewer if not enough nodes)
             replicas = live_nodes[:3]
-            
-            # Lease Management
             primary = self.grant_lease(chunk_handle, replicas)
 
             # 1. Metadata
@@ -376,10 +371,14 @@ class MasterNode:
             if not file_row: return jsonify({"error": "Not found"}), 404
             owner = file_row[0][0]
 
-            # 2. ACL Check
+            # 2. ACL Check - FIXED
             if owner != user_id:
-                perm = self.run_query("SELECT status FROM permissions WHERE file_id=? AND user_id=?", (file_id, user_id))
-                if not perm or perm[0][0] != 'APPROVED':
+                # Check for ANY approved permission (handles duplicate requests)
+                perm = self.run_query(
+                    "SELECT status FROM permissions WHERE file_id=? AND user_id=? AND status='APPROVED' LIMIT 1", 
+                    (file_id, user_id)
+                )
+                if not perm:
                     return jsonify({"error": "Permission Denied"}), 403
             
             # 3. Retrieve Locations
@@ -392,7 +391,6 @@ class MasterNode:
                 # If I am leader, ensure active lease
                 current_primary = db_primary
                 if self.leader_id == self.port:
-                    # Refresh or re-elect primary if needed
                     current_primary = self.grant_lease(handle, replicas)
 
                 chunks.append({
@@ -409,7 +407,7 @@ class MasterNode:
             owned = self.run_query("SELECT file_id, filename, owner_id FROM files WHERE owner_id=?", (user_id,))
             # Shared files
             shared = self.run_query('''
-                SELECT f.file_id, f.filename, f.owner_id 
+                SELECT DISTINCT f.file_id, f.filename, f.owner_id 
                 FROM files f 
                 JOIN permissions p ON f.file_id = p.file_id 
                 WHERE p.user_id=? AND p.status='APPROVED'
@@ -431,6 +429,12 @@ class MasterNode:
             f = self.run_query("SELECT owner_id FROM files WHERE file_id=?", (data['file_id'],))
             if not f: return jsonify({"error": "File not found"}), 404
             
+            # Check for existing pending/approved requests to prevent duplicates
+            existing = self.run_query("SELECT req_id FROM permissions WHERE file_id=? AND user_id=?", 
+                                      (data['file_id'], data['user_id']))
+            if existing:
+                return jsonify({"error": "Request already exists"}), 200 # Return 200 to satisfy frontend toast
+
             q = "INSERT INTO permissions VALUES (?, ?, ?, ?, 'PENDING')"
             p = (req_id, data['file_id'], data['user_id'], data['access_type'])
             try:
@@ -438,7 +442,7 @@ class MasterNode:
                 self.replicate_to_peers(q, p)
                 return jsonify({"status": "requested"})
             except:
-                return jsonify({"error": "Request pending"}), 400
+                return jsonify({"error": "Request failed"}), 400
 
         @self.app.route('/access/pending/<user_id>', methods=['GET'])
         def get_pending_requests(user_id):
@@ -467,14 +471,13 @@ class MasterNode:
         @self.app.route('/admin/kill', methods=['POST'])
         def kill_node():
             def shutdown():
-                time.sleep(0.5) # Wait for response to send
+                time.sleep(0.5) 
                 print(f"[Node-{self.port}] KILLED BY ADMIN")
                 os._exit(0)
             threading.Thread(target=shutdown).start()
             return jsonify({"status": "killed"})
 
     def run(self):
-        # Start monitoring in background
         threading.Thread(target=self.monitor_leader, daemon=True).start()
         print(f"[Node-{self.port}] Master Node running (DB: {self.db_name})")
         self.app.run(port=self.port, debug=False)

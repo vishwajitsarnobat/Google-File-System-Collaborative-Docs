@@ -1,33 +1,46 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Network, ShieldCheck } from "lucide-react";
+import { Network, ShieldCheck, Loader2 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { toast } from "sonner";
 
 export default function Login() {
     const [isRegister, setIsRegister] = useState(false);
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
+        setLoading(true);
+        
         try {
-            const res = await axios.post(`http://localhost:3000${endpoint}`, { username, password });
-            login(res.data);
+            let data;
+            if (isRegister) {
+                data = await api.register({ username, password });
+                toast.success("Account created successfully!");
+            } else {
+                data = await api.login({ username, password });
+            }
+            
+            login(data);
             navigate("/dashboard");
         } catch (err: any) {
-            setError(err.response?.data?.error || "Authentication failed");
+            setError(err.response?.data?.error || "Authentication failed. Is the cluster running?");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -86,6 +99,7 @@ export default function Login() {
                                     onChange={e => setUsername(e.target.value)} 
                                     required 
                                     className="h-11"
+                                    disabled={loading}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -97,16 +111,17 @@ export default function Login() {
                                     onChange={e => setPassword(e.target.value)} 
                                     required 
                                     className="h-11"
+                                    disabled={loading}
                                 />
                             </div>
-                            <Button type="submit" className="w-full h-11 text-base mt-2 shadow-lg shadow-primary/25">
-                                {isRegister ? "Create Account" : "Sign In"}
+                            <Button type="submit" className="w-full h-11 text-base mt-2 shadow-lg shadow-primary/25" disabled={loading}>
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isRegister ? "Create Account" : "Sign In")}
                             </Button>
                             <div className="text-center text-sm mt-4">
                                 <span className="text-muted-foreground">
                                     {isRegister ? "Already have an account? " : "Don't have an account? "}
                                 </span>
-                                <button type="button" onClick={() => setIsRegister(!isRegister)} className="text-primary hover:underline font-medium">
+                                <button type="button" onClick={() => { setIsRegister(!isRegister); setError(""); }} className="text-primary hover:underline font-medium">
                                     {isRegister ? "Sign In" : "Sign Up"}
                                 </button>
                             </div>

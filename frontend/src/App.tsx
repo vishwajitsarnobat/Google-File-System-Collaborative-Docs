@@ -7,6 +7,7 @@ import Editor from "@/pages/Editor";
 import Login from "@/pages/Login";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Toaster } from "@/components/ui/sonner"; // Import Toaster
 import { Network } from "lucide-react";
 import { JSX } from "react";
 
@@ -65,6 +66,7 @@ export default function App() {
                             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                         </Routes>
                     </main>
+                    <Toaster /> {/* Added Toaster here */}
                 </Router>
             </AuthProvider>
         </ThemeProvider>

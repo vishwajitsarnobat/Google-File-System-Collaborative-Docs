@@ -1,35 +1,53 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api"; // Use centralized API
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Server, Activity, Clock, Play, Power, GitMerge, Cpu, Crown, Terminal } from "lucide-react";
+import { Server, Activity, Clock, Play, Power, Cpu, Crown, Terminal, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+interface ClusterData {
+    masters: any[];
+    chunkservers: any[];
+    current_leader: number | null;
+}
 
 export default function Admin() {
-    const [data, setData] = useState<any>({ masters: [], chunkservers: [], current_leader: null });
-    const [loading, setLoading] = useState<number | null>(null);
+    const [data, setData] = useState<ClusterData>({ masters: [], chunkservers: [], current_leader: null });
+    const [loadingAction, setLoadingAction] = useState<number | null>(null);
+    const [connectionError, setConnectionError] = useState(false);
 
     const fetchStatus = async () => {
         try {
-            const res = await axios.get("http://localhost:3000/api/admin/cluster-status");
-            setData(res.data);
-        } catch (e) { console.error(e); }
+            const res = await api.getSystemStatus();
+            setData(res);
+            setConnectionError(false);
+        } catch (e) { 
+            console.error(e); 
+            setConnectionError(true);
+        }
     };
 
     useEffect(() => {
         fetchStatus();
-        const interval = setInterval(fetchStatus, 1000);
+        const interval = setInterval(fetchStatus, 2000); // Reduced polling frequency slightly
         return () => clearInterval(interval);
     }, []);
 
     const toggleNode = async (port: number, action: 'start' | 'stop') => {
-        setLoading(port);
+        setLoadingAction(port);
         try {
-            await axios.post(`http://localhost:3000/api/admin/node/${action}/${port}`);
-            setTimeout(fetchStatus, 500);
-        } catch(e) { alert("Command failed"); }
-        finally { setLoading(null); }
+            if (action === 'stop') await api.killNode(port);
+            else await api.startNode(port);
+            
+            toast.success(`Node ${port} ${action === 'start' ? 'booting up' : 'shutting down'}...`);
+            setTimeout(fetchStatus, 800); // Quick refresh
+        } catch(e) { 
+            toast.error(`Failed to ${action} node ${port}`); 
+        } finally { 
+            setLoadingAction(null); 
+        }
     };
 
     return (
@@ -40,9 +58,15 @@ export default function Admin() {
                     <p className="text-muted-foreground">Real-time monitoring of the distributed cluster topology.</p>
                 </div>
                 <div className="flex gap-3 text-sm font-medium bg-card p-2 rounded-lg border shadow-sm">
-                    <span className="flex items-center gap-2 px-2"><div className="h-2 w-2 rounded-full bg-green-500"/> Healthy</span>
-                    <span className="flex items-center gap-2 px-2 border-l"><div className="h-2 w-2 rounded-full bg-red-500"/> Offline</span>
-                    <span className="flex items-center gap-2 px-2 border-l"><div className="h-2 w-2 rounded-full bg-yellow-500"/> Leader</span>
+                    {connectionError ? (
+                        <span className="flex items-center gap-2 px-2 text-red-500 animate-pulse">
+                            <AlertCircle className="h-4 w-4"/> Connection Lost
+                        </span>
+                    ) : (
+                         <span className="flex items-center gap-2 px-2 text-green-600">
+                            <Activity className="h-4 w-4"/> Connected
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -79,9 +103,9 @@ export default function Admin() {
                                         size="icon" 
                                         className={`h-8 w-8 rounded-full transition-transform active:scale-95 ${!isRunning ? 'bg-green-600 hover:bg-green-700' : ''}`}
                                         onClick={() => toggleNode(m.node_id, isRunning ? 'stop' : 'start')}
-                                        disabled={loading === m.node_id}
+                                        disabled={loadingAction === m.node_id}
                                     >
-                                        {loading === m.node_id ? <Activity className="h-4 w-4 animate-spin" /> : (isRunning ? <Power className="h-4 w-4" /> : <Play className="h-4 w-4" />)}
+                                        {loadingAction === m.node_id ? <Activity className="h-4 w-4 animate-spin" /> : (isRunning ? <Power className="h-4 w-4" /> : <Play className="h-4 w-4" />)}
                                     </Button>
                                 </CardHeader>
                                 
@@ -171,8 +195,9 @@ export default function Admin() {
                                                 size="sm" 
                                                 className="w-full h-8 text-xs mt-1"
                                                 onClick={() => toggleNode(cs.port, 'stop')}
+                                                disabled={loadingAction === cs.port}
                                             >
-                                                Kill Process
+                                                {loadingAction === cs.port ? <Activity className="h-3 w-3 animate-spin"/> : "Kill Process"}
                                             </Button>
                                         </>
                                     ) : (
@@ -180,8 +205,14 @@ export default function Admin() {
                                             <div className="h-16 flex items-center justify-center text-xs text-muted-foreground font-mono border rounded bg-muted/50">
                                                 OFFLINE
                                             </div>
-                                            <Button variant="default" size="sm" className="w-full h-8 bg-green-600 hover:bg-green-700" onClick={() => toggleNode(cs.port, 'start')}>
-                                                <Play className="h-3 w-3 mr-2" /> Revive
+                                            <Button 
+                                                variant="default" 
+                                                size="sm" 
+                                                className="w-full h-8 bg-green-600 hover:bg-green-700" 
+                                                onClick={() => toggleNode(cs.port, 'start')}
+                                                disabled={loadingAction === cs.port}
+                                            >
+                                                {loadingAction === cs.port ? <Activity className="h-3 w-3 animate-spin"/> : <><Play className="h-3 w-3 mr-2" /> Revive</>}
                                             </Button>
                                         </div>
                                     )}
@@ -196,16 +227,17 @@ export default function Admin() {
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-mono text-slate-400 flex items-center gap-2">
                         <Terminal className="h-4 w-4" />
-                        System Logs
+                        Cluster State Overview
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="font-mono text-xs text-green-400/90 space-y-1">
-                        <p>{">"} Initializing GFS Admin Console...</p>
-                        <p>{">"} Connection established to Middleware [::1]:3000</p>
-                        <p>{">"} <span className="text-blue-400">Load Balancer:</span> Active (Weighted Round-Robin strategy)</p>
-                        <p>{">"} <span className="text-yellow-400">Consensus:</span> {data.current_leader ? `Leader Elected (Node ${data.current_leader})` : "ELECTION IN PROGRESS"}</p>
-                        <p>{">"} <span className="text-purple-400">Fault Tolerance:</span> {data.masters.filter((m:any) => m.status === "RUNNING").length}/3 Masters, {data.chunkservers.filter((c:any) => c.status === "RUNNING").length}/4 Chunkservers available.</p>
+                        <p>{">"} <span className="text-blue-400">Middleware:</span> Active at [::1]:3000</p>
+                        <p>{">"} <span className="text-yellow-400">Leader Status:</span> {data.current_leader ? `Node ${data.current_leader} elected via Bully Algorithm` : "ELECTION IN PROGRESS (or Leader Down)"}</p>
+                        <p>{">"} <span className="text-purple-400">Capacity:</span> {data.chunkservers.filter((c:any) => c.status === "RUNNING").length} Storage Nodes online.</p>
+                        {data.chunkservers.some((c:any) => c.status === "UNREACHABLE") && (
+                            <p>{">"} <span className="text-red-400">WARNING:</span> Some nodes are unreachable. Check logs.</p>
+                        )}
                     </div>
                 </CardContent>
             </Card>
