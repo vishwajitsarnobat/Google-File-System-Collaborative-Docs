@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { 
     Loader2, 
     Lock, 
@@ -42,7 +43,6 @@ export default function Editor() {
         if (isEditingRef.current) return;
         
         try {
-            // Post request includes user_id for secure ACL checks in Master
             const res = await axios.post(`http://localhost:3000/api/docs/read/${id}`, {
                 user_id: user?.user_id
             });
@@ -52,12 +52,11 @@ export default function Editor() {
         } catch (err: any) {
             if (err.response && err.response.status === 403) {
                 setPermissionDenied(true);
+            } else if (err.response && err.response.status === 503) {
+                // Cluster rebalancing or dead nodes
+                if (!content) setError("System unavailable. Retrying connection...");
             } else {
-                // Only set error if we don't have content yet (initial load)
-                // Otherwise, we keep showing stale content with a warning if needed
-                if (!content) {
-                    setError("File unavailable. The Chunkserver cluster might be unstable.");
-                }
+                if (!content) setError("Document unavailable.");
             }
         } finally {
             setLoading(false);
@@ -69,9 +68,9 @@ export default function Editor() {
         if (user) fetchContent();
     }, [id, user]);
 
-    // Polling Interval (Simulates Real-time sync)
+    // Polling Interval
     useEffect(() => {
-        const interval = setInterval(fetchContent, 2000); // Poll every 2 seconds
+        const interval = setInterval(fetchContent, 3000); 
         return () => clearInterval(interval);
     }, [id, user]);
 
@@ -81,19 +80,22 @@ export default function Editor() {
         if (!content) return;
         setSaving(true);
         try {
-            // Use the UPDATE endpoint to commit changes to the existing chunk handle
             await axios.post("http://localhost:3000/api/docs/update", {
                 file_id: id,
                 content: content,
                 user_id: user?.user_id
             });
             
+            toast.success("Changes saved to cluster.");
             setIsEditing(false);
             isEditingRef.current = false;
-            // Immediate fetch to ensure we are in sync
-            fetchContent();
-        } catch (e) {
-            alert("Save Failed. The Master node or Primary Chunkserver might be offline.");
+            fetchContent(); 
+        } catch (e: any) {
+            if (e.response?.status === 503) {
+                toast.error("Save Failed: No active Chunkservers.");
+            } else {
+                toast.error("Save Failed: Cluster might be in election.");
+            }
         } finally {
             setSaving(false);
         }
@@ -107,8 +109,9 @@ export default function Editor() {
                 access_type: type
             });
             setRequestSent(true);
+            toast.success("Access request sent to owner.");
         } catch (e) {
-            alert("Request failed (It might already be pending).");
+            toast.info("Request already pending.");
         }
     };
 
@@ -120,7 +123,7 @@ export default function Editor() {
     const cancelEdit = () => {
         setIsEditing(false);
         isEditingRef.current = false;
-        fetchContent(); // Revert to server state
+        fetchContent(); 
     };
 
     // --- Renders ---
@@ -136,11 +139,11 @@ export default function Editor() {
     // 1. Access Denied View
     if (permissionDenied) {
         return (
-            <div className="flex h-screen w-full justify-center items-center bg-slate-50 p-4">
-                <Card className="w-full max-w-md shadow-lg border-red-100">
+            <div className="flex h-screen w-full justify-center items-center bg-slate-50 p-4 dark:bg-background">
+                <Card className="w-full max-w-md shadow-lg border-red-100 dark:border-red-900">
                     <CardHeader className="text-center pb-2">
-                        <div className="mx-auto bg-red-100 p-4 rounded-full w-fit mb-4">
-                            <Lock className="h-8 w-8 text-red-600" />
+                        <div className="mx-auto bg-red-100 dark:bg-red-900/30 p-4 rounded-full w-fit mb-4">
+                            <Lock className="h-8 w-8 text-red-600 dark:text-red-400" />
                         </div>
                         <CardTitle className="text-xl">Access Restricted</CardTitle>
                         <p className="text-sm text-muted-foreground mt-2">
@@ -149,7 +152,7 @@ export default function Editor() {
                     </CardHeader>
                     <CardContent className="space-y-4 pt-4">
                         {requestSent ? (
-                            <div className="flex flex-col items-center justify-center p-4 bg-green-50 text-green-700 rounded-md border border-green-200">
+                            <div className="flex flex-col items-center justify-center p-4 bg-green-50 text-green-700 border border-green-200 rounded-md dark:bg-green-900/20 dark:text-green-400 dark:border-green-900">
                                 <CheckCircle2 className="h-6 w-6 mb-2" />
                                 <span className="font-medium">Request Sent!</span>
                                 <span className="text-xs">Wait for the owner to approve.</span>
@@ -205,21 +208,21 @@ export default function Editor() {
             {error && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>System Connection Issue</AlertTitle>
+                    <AlertTitle>Cluster Stability Issue</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
             
             {/* Main Content Card */}
             <Card className="min-h-[600px] flex flex-col shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 px-6 py-4">
+                <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 px-6 py-4 dark:bg-muted/20">
                     <div>
                         <CardTitle className="text-lg">Document Viewer</CardTitle>
                         <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                              <span className="font-mono">ID: {id}</span>
                              {/* Sync Indicator */}
                              {!isEditing && !error && (
-                                 <Badge variant="outline" className="h-5 gap-1 bg-green-50 text-green-700 border-green-200">
+                                 <Badge variant="outline" className="h-5 gap-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                                      <RefreshCw className="h-3 w-3 animate-spin-slow"/> Live Sync
                                  </Badge>
                              )}
@@ -237,7 +240,7 @@ export default function Editor() {
                         <Textarea 
                             value={content} 
                             onChange={(e) => setContent(e.target.value)} 
-                            className="w-full h-full min-h-[550px] resize-none border-0 rounded-none focus-visible:ring-0 p-6 font-mono text-sm leading-relaxed"
+                            className="w-full h-full min-h-[550px] resize-none border-0 rounded-none focus-visible:ring-0 p-6 font-mono text-sm leading-relaxed bg-background"
                             placeholder="Start typing..."
                             autoFocus
                         />

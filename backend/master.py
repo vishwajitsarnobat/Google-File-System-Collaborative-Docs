@@ -135,7 +135,6 @@ class MasterNode:
                 try:
                     requests.post(f"http://localhost:{port}/admin/adjust-clock", 
                                   json={"offset": adjustment}, timeout=0.5)
-                    # print(f"[ClockSync] Adjusted Node {port} by {adjustment:.4f}s")
                 except:
                     pass
 
@@ -328,10 +327,19 @@ class MasterNode:
             file_id = f"file_{int(time.time())}"
             chunk_handle = f"chunk_{file_id}_0"
             
+            # Warm-up: Check if we need to wait for heartbeats (startup race condition)
+            retries = 8 
+            while not self.active_chunkservers and retries > 0:
+                time.sleep(0.5)
+                retries -= 1
+
             # Load Balancing: Pick active nodes
             now = time.time()
             live_nodes = [p for p, t in self.active_chunkservers.items() if now - t < 10]
-            if not live_nodes: return jsonify({"error": "No Chunkservers Available"}), 503
+            
+            if not live_nodes: 
+                print("[GFS] Create failed: No live chunkservers.")
+                return jsonify({"error": "No Chunkservers Available"}), 503
 
             # Select 3 replicas (or fewer if not enough nodes)
             replicas = live_nodes[:3]

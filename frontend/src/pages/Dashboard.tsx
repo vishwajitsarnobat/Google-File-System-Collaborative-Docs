@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Plus, Loader2, RefreshCw, Copy, FolderOpen } from "lucide-react";
-import { toast } from "sonner"; // Assuming you have sonner installed for toasts, otherwise use alert
+import { toast } from "sonner";
 
 // Interface for File Data
 interface Doc {
@@ -42,7 +42,7 @@ export default function Dashboard() {
             setFiles(res.data.files);
         } catch (e) {
             console.error("Failed to fetch files");
-            // Ideally show a toast error here
+            toast.error("Could not fetch files. The cluster might be down.");
         } finally {
             setLoadingFiles(false);
         }
@@ -64,14 +64,26 @@ export default function Dashboard() {
                 user_id: user?.user_id
             });
             
+            toast.success("File created successfully!");
+            
             // Reset form
             setNewFilename("");
             setNewContent("");
             
             // Navigate to the new document
             navigate(`/doc/${res.data.file_id}`);
-        } catch (error) {
-            alert("Cluster Write Failed. Is the Leader Active?");
+        } catch (error: any) {
+            if (error.response?.status === 503) {
+                toast.error("System Busy: No Chunkservers available.", {
+                    description: "The storage nodes are offline or initializing. Check Admin Console."
+                });
+            } else if (error.response?.status === 500) {
+                toast.error("Transaction Failed", {
+                    description: "Write failed. A Master re-election might be in progress."
+                });
+            } else {
+                toast.error("An unexpected error occurred.");
+            }
         } finally {
             setCreating(false);
         }
@@ -84,8 +96,7 @@ export default function Dashboard() {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        // If you have a toast library installed: toast.success("ID Copied!");
-        alert("File ID copied to clipboard!"); 
+        toast.success("File ID copied to clipboard"); 
     };
 
     return (
@@ -93,7 +104,7 @@ export default function Dashboard() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Dashboard</h2>
                     <p className="text-muted-foreground">Manage your distributed documents.</p>
                 </div>
                 <Button variant="outline" onClick={fetchFiles} disabled={loadingFiles}>
@@ -187,14 +198,14 @@ export default function Dashboard() {
                                     files.map((file) => (
                                         <TableRow key={file.id}>
                                             <TableCell className="font-medium flex items-center gap-2">
-                                                <div className="bg-blue-100 p-2 rounded text-blue-600">
+                                                <div className="bg-blue-100 p-2 rounded text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                                                     <FileText className="h-4 w-4" />
                                                 </div>
                                                 {file.name}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2 group">
-                                                    <code className="bg-slate-100 px-1 py-0.5 rounded text-xs text-slate-500">
+                                                    <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-xs text-slate-500 dark:text-slate-400">
                                                         {file.id.substring(0, 8)}...
                                                     </code>
                                                     <Button 

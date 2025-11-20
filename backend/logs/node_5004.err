@@ -1,2 +1,45 @@
-Address already in use
-Port 5004 is in use by another program. Either identify and stop that program, or start the server with a different port.
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5004
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [21/Nov/2025 02:46:01] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:01] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:11] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:11] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:21] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:21] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:31] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:31] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:31] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:31] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:32] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:33] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:34] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:35] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:36] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:37] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:38] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:39] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:40] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:41] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:41] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:42] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:43] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:44] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:45] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:46] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:47] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:48] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:49] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:50] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:51] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:51] "GET /admin/clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:51] "POST /admin/adjust-clock HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:52] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:53] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:54] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:55] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:56] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:57] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:58] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:46:59] "GET /admin/status HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 02:47:00] "GET /admin/status HTTP/1.1" 200 -
