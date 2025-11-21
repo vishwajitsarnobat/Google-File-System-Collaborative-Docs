@@ -28,7 +28,7 @@ function NavBar() {
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
                         <Network className="h-6 w-6" />
-                        <span>GFS Distributed</span>
+                        <span>GFS Based Collaborative Docs</span>
                     </div>
                     <nav className="flex items-center gap-6 text-sm font-medium">
                         <Link to="/dashboard" className="transition-colors hover:text-primary text-muted-foreground hover:bg-accent px-3 py-2 rounded-md">Dashboard</Link>

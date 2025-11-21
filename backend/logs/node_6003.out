@@ -1,3 +1,5 @@
 [Node-6003] Master Node running (DB: master_6003.db)
  * Serving Flask app 'master'
  * Debug mode: off
+[Node-6003] Starting Election...
+[Node-6003] I am the LEADER!

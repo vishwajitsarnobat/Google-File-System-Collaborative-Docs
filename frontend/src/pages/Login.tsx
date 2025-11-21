@@ -52,7 +52,7 @@ export default function Login() {
                 <div className="relative z-10 text-white max-w-lg space-y-6">
                     <div className="flex items-center gap-3 text-3xl font-bold">
                         <Network className="h-10 w-10" />
-                        <h1>GFS Distributed</h1>
+                        <h1>GFS Based Collaborative Docs</h1>
                     </div>
                     <p className="text-lg text-primary-foreground/90 leading-relaxed">
                         Simulate Bully Election, Berkeley Clock Synchronization, and Fault-Tolerant 
